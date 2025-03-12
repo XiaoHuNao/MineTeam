@@ -29,6 +29,7 @@ import java.util.UUID;
 public class MobTeamEventSubscriber {
     @SubscribeEvent
     public static void onPlayerInteractEntityInteract(PlayerInteractEvent.EntityInteract event) {
+        if (MineTeam.IS_CONFLUENCE_LOADED) return;
         Level level = event.getLevel();
         if (level.isClientSide() || event.getHand() != InteractionHand.MAIN_HAND) {
             return;
@@ -56,6 +57,7 @@ public class MobTeamEventSubscriber {
 
     @SubscribeEvent
     public static void onEntityTick(EntityTickEvent.Pre event) {
+        if (MineTeam.IS_CONFLUENCE_LOADED) return;
         Entity entity = event.getEntity();
         if (entity instanceof LivingEntity livingEntity && !livingEntity.level().isClientSide) {
             CompoundTag tag = livingEntity.getPersistentData();
