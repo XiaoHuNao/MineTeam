@@ -1,5 +1,6 @@
 package com.xiaohunao.mine_team.common.mixin;
 
+import com.xiaohunao.mine_team.MineTeam;
 import com.xiaohunao.mine_team.client.gui.team.TeamRender;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.EffectRenderingInventoryScreen;
@@ -14,23 +15,24 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(InventoryScreen.class)
-public abstract class InventoryScreenMixin extends EffectRenderingInventoryScreen<InventoryMenu>{
+public abstract class InventoryScreenMixin extends EffectRenderingInventoryScreen<InventoryMenu> {
     @Unique
-    private final TeamRender team$teamRender = new TeamRender(this);
+    private TeamRender mine_team$teamRender;
 
     public InventoryScreenMixin(InventoryMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
     }
 
-    @Inject(method = "init", at = @At("RETURN"))
+    @Inject(method = "init", at = @At("TAIL"))
     private void init(CallbackInfo info) {
-        team$teamRender.initButton();
+        if (MineTeam.IS_CONFLUENCE_LOADED) return;
+        this.mine_team$teamRender = new TeamRender(this);
+        mine_team$teamRender.initButton();
     }
 
     @Inject(method = "render", at = @At("HEAD"))
     private void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
-        team$teamRender.renderTeamIcon(guiGraphics, mouseX, mouseY, partialTick);
+        if (MineTeam.IS_CONFLUENCE_LOADED) return;
+        mine_team$teamRender.renderTeamIcon(guiGraphics, mouseX, mouseY, partialTick);
     }
-
-
 }
