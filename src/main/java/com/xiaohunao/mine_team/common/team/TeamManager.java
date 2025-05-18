@@ -61,7 +61,12 @@ public class TeamManager extends SavedData {
         this.taems.forEach((uuid, team) -> {
             taems.put(uuid.toString(), team.serializeNBT());
         });
+        CompoundTag dyeColorTeam = new CompoundTag();
+//        this.dyeColorTeam.forEach((dyeColor, team) -> {
+//            dyeColorTeam.put(dyeColor.toString(), team.serializeNBT());
+//        });
         compoundTag.put("taems", taems);
+//        compoundTag.put("dyeColorTeam", dyeColorTeam);
 
         if (!level.isClientSide){
             PacketDistributor.sendToAllPlayers(new TeamManagerSyncPayload(compoundTag));
@@ -84,14 +89,16 @@ public class TeamManager extends SavedData {
             Team team = new Team().deserializeNBT(compoundTag.getCompound("taems").getCompound(uid));
             this.taems.put(uuid, team);
 
-            if (!LoadedCompat.FTB_TEAMS){
-                DyeColor dyeColor = DyeColor.byFireworkColor(team.getColor());
-                if (dyeColor != null){
-                    this.dyeColorTeam.put(dyeColor, team);
+            DyeColor dyeColor = DyeColor.byFireworkColor(team.getColor());
+            if (dyeColor != null) {
+                this.dyeColorTeam.put(dyeColor, team);
 
-                }
             }
         }
+
+//            if (!LoadedCompat.FTB_TEAMS){
+
+//            }
     }
 
 
