@@ -7,8 +7,6 @@ import com.xiaohunao.mine_team.common.network.TeamAttachmentSyncPayload;
 import com.xiaohunao.mine_team.common.team.TeamManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -49,9 +47,8 @@ public class PlayerEventSubscriber {
 
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
-        Entity entity = event.getEntity();
-        if (entity instanceof Player player && player.hasData(MTAttachmentTypes.TEAM)) {
-            PacketDistributor.sendToPlayer((ServerPlayer) player, new TeamAttachmentSyncPayload(player.getId(),player.getData(MTAttachmentTypes.TEAM)));
+        if (event.getEntity() instanceof ServerPlayer player && player.hasData(MTAttachmentTypes.TEAM)) {
+            PacketDistributor.sendToPlayer(player, new TeamAttachmentSyncPayload(player.getId(),player.getData(MTAttachmentTypes.TEAM)));
         }
     }
 
