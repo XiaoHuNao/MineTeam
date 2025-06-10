@@ -23,8 +23,8 @@ import java.util.UUID;
 public class PlayerEventSubscriber {
     @SubscribeEvent
     public static void onPlayerLoggedInEvent(PlayerEvent.PlayerLoggedInEvent event) {
-        Player player = event.getEntity();
-        ServerLevel serverLevel = (ServerLevel)player.level();
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        ServerLevel serverLevel = player.serverLevel();
         TeamManager teamManager = TeamManager.of(serverLevel);
 
 
@@ -43,7 +43,7 @@ public class PlayerEventSubscriber {
                     .setCanPvP(false);
             player.setData(MTAttachmentTypes.TEAM, attachment);
         }
-        PacketDistributor.sendToPlayer((ServerPlayer) player, new TeamAttachmentSyncPayload(player.getId(),player.getData(MTAttachmentTypes.TEAM)));
+        PacketDistributor.sendToPlayer(player, new TeamAttachmentSyncPayload(player.getId(),player.getData(MTAttachmentTypes.TEAM)));
         serverLevel.getDataStorage().save();
     }
 
