@@ -5,7 +5,6 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "mine_team.refmap.json",
   "mixins": [
-    "LevelMixin",
     "MobMixin"
   ],
   "client": [

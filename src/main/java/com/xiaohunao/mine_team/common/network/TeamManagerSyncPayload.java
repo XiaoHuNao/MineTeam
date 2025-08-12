@@ -2,31 +2,27 @@ package com.xiaohunao.mine_team.common.network;
 
 import com.xiaohunao.mine_team.MineTeam;
 import com.xiaohunao.mine_team.common.team.TeamManager;
-import io.netty.buffer.ByteBuf;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record TeamManagerSyncPayload(CompoundTag compoundTag) implements CustomPacketPayload {
-    public static final CustomPacketPayload.Type<TeamManagerSyncPayload> TYPE = new CustomPacketPayload.Type<>(MineTeam.asResource("team_manager_sync"));
-    public static final StreamCodec<ByteBuf, TeamManagerSyncPayload> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.COMPOUND_TAG, TeamManagerSyncPayload::compoundTag,
-            TeamManagerSyncPayload::new
-    );
+public record TeamManagerSyncPayload(TeamManager manager) implements CustomPacketPayload {
+    public static final Type<TeamManagerSyncPayload> TYPE = new Type<>(MineTeam.asResource("team_manager_sync"));
+    public static final StreamCodec<FriendlyByteBuf, TeamManagerSyncPayload> STREAM_CODEC = TeamManager.STREAM_CODEC.map(TeamManagerSyncPayload::new, TeamManagerSyncPayload::manager);
 
-
-    public static void clientHandle(final TeamManagerSyncPayload payload, final IPayloadContext context) {
-        context.enqueueWork(() -> {
-            Level level = context.player().level();
-            TeamManager teamManager = TeamManager.of(level);
-            teamManager.deserializeNBT(payload.compoundTag);
-        });
-    }
     @Override
-    public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
+    public Type<TeamManagerSyncPayload> type() {
         return TYPE;
+    }
+
+    public void clientHandle(IPayloadContext context) {
+        context.enqueueWork(() -> TeamManager.of(context.player().level()).copyFrom(manager));
+    }
+
+    public static void sendToClient(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new TeamManagerSyncPayload(TeamManager.of(player.level())));
     }
 }

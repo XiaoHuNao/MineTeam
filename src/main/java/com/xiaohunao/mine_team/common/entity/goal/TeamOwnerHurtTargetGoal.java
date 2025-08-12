@@ -22,7 +22,7 @@ public class TeamOwnerHurtTargetGoal extends TargetGoal {
 
     public boolean canUse() {
         if (mob.hasData(MTAttachmentTypes.TEAM)) {
-            TeamAttachment data = this.mob.getData(MTAttachmentTypes.TEAM);
+            TeamAttachment data = TeamAttachment.of(mob);
             TeamManager teamManager = TeamManager.of(mob.level());
             Team team = teamManager.getTeam(data.getTeamUid());
             if (team != null){
@@ -36,19 +36,18 @@ public class TeamOwnerHurtTargetGoal extends TargetGoal {
     }
 
     private boolean attackTeam(LivingEntity attack,LivingEntity target) {
-        TeamAttachment targetAttachment = target.getData(MTAttachmentTypes.TEAM);
+        TeamAttachment targetAttachment = TeamAttachment.of(target);
         TeamManager teamManager = TeamManager.of(target.level());
         Team targetTeam = teamManager.getTeam(targetAttachment.getTeamUid());
-        Team attackTeam = teamManager.getTeam(attack.getData(MTAttachmentTypes.TEAM).getTeamUid());
+        Team attackTeam = teamManager.getTeam(TeamAttachment.of(attack).getTeamUid());
         return attackTeam != targetTeam;
     }
-
 
     public void start() {
         this.mob.setTarget(this.teamLastHurt);
 
         TeamManager teamManager = TeamManager.of(this.mob.level());
-        Team team = teamManager.getTeam(this.mob.getData(MTAttachmentTypes.TEAM).getTeamUid());
+        Team team = teamManager.getTeam(TeamAttachment.of(mob).getTeamUid());
         if (team != null){
             this.timestamp = team.getLastHurtByMobTimestamp();
         }

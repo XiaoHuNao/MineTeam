@@ -47,7 +47,7 @@ public class MobTeamEventSubscriber {
                 int conversionTime = livingEntity.level().random.nextInt(2401) + 3600;
 //                int conversionTime = livingEntity.level().random.nextInt(5);
                 tag.putInt("teamConversionTime", conversionTime);
-                tag.putUUID("teamUid", player.getData(MTAttachmentTypes.TEAM).getTeamUid());
+                tag.putUUID("teamUid", TeamAttachment.of(player).getTeamUid());
                 livingEntity.removeEffect(MobEffects.WEAKNESS);
                 livingEntity.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, Math.min(livingEntity.level().getDifficulty().getId() - 1, 0)));
                 livingEntity.setGlowingTag(true);

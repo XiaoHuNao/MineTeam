@@ -1,112 +1,122 @@
 package com.xiaohunao.mine_team.common.team;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Maps;
 import com.xiaohunao.mine_team.MineTeam;
-import com.xiaohunao.mine_team.common.compat.LoadedCompat;
+import com.xiaohunao.mine_team.common.attachment.TeamAttachment;
 import com.xiaohunao.mine_team.common.init.MTAttachmentTypes;
-import com.xiaohunao.mine_team.common.mixed.TeamManagerContainer;
-import com.xiaohunao.mine_team.common.network.TeamManagerSyncPayload;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.UUID;
 
-
 public class TeamManager extends SavedData {
-
-    private static final String NAME = MineTeam.MODID + "_manager";
-    private static final Logger LOGGING = LoggerFactory.getLogger(TeamManager.class);
-
-    private final Map<UUID, Team> taems = Maps.newHashMap();
-    private final BiMap<DyeColor,Team> dyeColorTeam = HashBiMap.create();
-
-    private TeamManager clientMonger;
-    private Level level;
-
-    public static TeamManager of(Level level) {
-        TeamManagerContainer container = (TeamManagerContainer) level;
-        TeamManager manager = container.mine_team$getTeamManager();
-        if (level instanceof ServerLevel serverLevel) {
-            if (manager == null) {
-                manager = serverLevel.getDataStorage().computeIfAbsent(new Factory<>(TeamManager::new,
-                        (CompoundTag compoundTag, HolderLookup.Provider tag) -> load(serverLevel,compoundTag)), NAME);
-                container.mine_team$setTeamManager(manager);
-                manager.level = serverLevel;
+    public static final StreamCodec<FriendlyByteBuf, TeamManager> STREAM_CODEC = new StreamCodec<>() {
+        @Override
+        public TeamManager decode(FriendlyByteBuf byteBuf) {
+            TeamManager manager = new TeamManager();
+            int size = byteBuf.readVarInt();
+            for (int i = 0; i < size; i++) {
+                manager.taems.put(byteBuf.readUUID(), Team.STREAM_CODEC.decode(byteBuf));
             }
-        } else {
-            if (manager == null) {
-                manager = new TeamManager();
-                container.mine_team$setTeamManager(manager);
+            size = byteBuf.readVarInt();
+            for (int i = 0; i < size; i++) {
+                DyeColor dyeColor = DyeColor.STREAM_CODEC.decode(byteBuf);
+                Team team = Team.STREAM_CODEC.decode(byteBuf);
+                manager.dyeColorTeam.put(dyeColor, team);
+                manager.teamDyeColor.put(team, dyeColor);
             }
-            manager.level = level;
+            return manager;
         }
 
-        return manager;
+        @Override
+        public void encode(FriendlyByteBuf byteBuf, TeamManager manager) {
+            byteBuf.writeVarInt(manager.taems.size());
+            for (Map.Entry<UUID, Team> entry : manager.taems.entrySet()) {
+                byteBuf.writeUUID(entry.getKey());
+                Team.STREAM_CODEC.encode(byteBuf, entry.getValue());
+            }
+            byteBuf.writeVarInt(manager.dyeColorTeam.size());
+            for (Map.Entry<DyeColor, Team> entry : manager.dyeColorTeam.entrySet()) {
+                DyeColor.STREAM_CODEC.encode(byteBuf, entry.getKey());
+                Team.STREAM_CODEC.encode(byteBuf, entry.getValue());
+            }
+        }
+    };
+    private static final String NAME = MineTeam.MODID + "_manager";
+    private static final Logger LOGGING = LoggerFactory.getLogger(TeamManager.class);
+    private static final TeamManager clientMonger = new TeamManager();
+
+    private final Map<UUID, Team> taems = Maps.newHashMap();
+    private final Map<DyeColor, Team> dyeColorTeam = Maps.newEnumMap(DyeColor.class);
+    private final Map<Team, DyeColor> teamDyeColor = Maps.newHashMap(); // bi hash map 无法正常工作
+
+    public static TeamManager of(Level level) {
+        if (level instanceof ServerLevel serverLevel) {
+            TeamManager manager = (serverLevel.dimension() == Level.OVERWORLD ? serverLevel : serverLevel.getServer().overworld())
+                    .getDataStorage().computeIfAbsent(new Factory<>(TeamManager::new, (tag, provider) -> {
+                        TeamManager manager1 = new TeamManager();
+                        manager1.deserializeNBT(tag);
+                        return manager1;
+                    }), NAME);
+            if (manager.isTeamEmpty()) {
+                for (DyeColor color : DyeColor.values()) {
+                    manager.createTeam(UUID.randomUUID(), color);
+                }
+                manager.setDirty();
+            }
+            return manager;
+        } else {
+            return clientMonger;
+        }
     }
 
     @Override
-    public  CompoundTag save(CompoundTag compoundTag, HolderLookup.Provider provider) {
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
         CompoundTag taems = new CompoundTag();
-        this.taems.forEach((uuid, team) -> {
-            taems.put(uuid.toString(), team.serializeNBT());
-        });
-        CompoundTag dyeColorTeam = new CompoundTag();
-//        this.dyeColorTeam.forEach((dyeColor, team) -> {
-//            dyeColorTeam.put(dyeColor.toString(), team.serializeNBT());
-//        });
-        compoundTag.put("taems", taems);
-//        compoundTag.put("dyeColorTeam", dyeColorTeam);
-
-        if (!level.isClientSide){
-            PacketDistributor.sendToAllPlayers(new TeamManagerSyncPayload(compoundTag));
+        for (Map.Entry<UUID, Team> entry : this.taems.entrySet()) {
+            taems.put(entry.getKey().toString(), Team.CODEC.encodeStart(NbtOps.INSTANCE, entry.getValue()).result().orElseGet(CompoundTag::new));
         }
-        return compoundTag;
+        tag.put("taems", taems);
+        return tag;
     }
 
-    public static TeamManager load(Level level,CompoundTag compoundTag) {
-        TeamManager manager = new TeamManager();
-        manager.deserializeNBT(compoundTag);
-        if (!level.isClientSide){
-            PacketDistributor.sendToAllPlayers(new TeamManagerSyncPayload(compoundTag));
-        }
-        return manager;
-    }
-
-    public void deserializeNBT(CompoundTag compoundTag) {
-        for (String uid : compoundTag.getCompound("taems").getAllKeys()) {
+    public void deserializeNBT(CompoundTag tag) {
+        CompoundTag taems = tag.getCompound("taems");
+        for (String uid : taems.getAllKeys()) {
             UUID uuid = UUID.fromString(uid);
-            Team team = new Team().deserializeNBT(compoundTag.getCompound("taems").getCompound(uid));
+            Team team = Team.CODEC.parse(NbtOps.INSTANCE, taems.get(uid)).result().orElseGet(Team::new);
             this.taems.put(uuid, team);
 
             DyeColor dyeColor = DyeColor.byFireworkColor(team.getColor());
             if (dyeColor != null) {
                 this.dyeColorTeam.put(dyeColor, team);
-
+                this.teamDyeColor.put(team, dyeColor);
             }
         }
-
-//            if (!LoadedCompat.FTB_TEAMS){
-
-//            }
     }
 
+    public void copyFrom(TeamManager manager) {
+        taems.putAll(manager.taems);
+        dyeColorTeam.putAll(manager.dyeColorTeam);
+        teamDyeColor.putAll(manager.teamDyeColor);
+    }
 
     public boolean isTeamEmpty() {
         return taems.isEmpty();
     }
 
-    public Team createTeam(UUID uuid,int textureDiffuseColor) {
+    public Team createTeam(UUID uuid, int textureDiffuseColor) {
         if (taems.containsKey(uuid)) {
             LOGGING.warn("Team with UUID {} already exists", uuid);
             return null;
@@ -131,14 +141,15 @@ public class TeamManager extends SavedData {
     public Team getTeam(DyeColor dyeColor) {
         return dyeColorTeam.get(dyeColor);
     }
+
     public DyeColor getDyeColor(Team team) {
-        return dyeColorTeam.inverse().get(team);
+        return teamDyeColor.get(team);
     }
 
     public static Team getTeam(Entity entity) {
         TeamManager manager = TeamManager.of(entity.level());
         if (entity.hasData(MTAttachmentTypes.TEAM)) {
-            return manager.taems.get(entity.getData(MTAttachmentTypes.TEAM).getTeamUid());
+            return manager.taems.get(TeamAttachment.of(entity).getTeamUid());
         }
         return null;
     }

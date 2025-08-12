@@ -23,8 +23,8 @@ public class LivingEventSubscriber {
         Entity attackEntity = source.getEntity();
         if (hurtEntity.level() instanceof ServerLevel && attackEntity != null && attackEntity != hurtEntity) {
             if (hurtEntity.hasData(MTAttachmentTypes.TEAM) && attackEntity.hasData(MTAttachmentTypes.TEAM)) {
-                TeamAttachment hurtEntityTeam = hurtEntity.getData(MTAttachmentTypes.TEAM);
-                TeamAttachment attackEntityTeam = attackEntity.getData(MTAttachmentTypes.TEAM);
+                TeamAttachment hurtEntityTeam = TeamAttachment.of(hurtEntity);
+                TeamAttachment attackEntityTeam = TeamAttachment.of(attackEntity);
 
                 if (!hurtEntityTeam.getTeamUid().equals(attackEntityTeam.getTeamUid())){
                     return;
