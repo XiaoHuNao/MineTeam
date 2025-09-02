@@ -15,21 +15,21 @@ import java.util.UUID;
 public class Team {
     public static final Codec<Team> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             UUIDUtil.CODEC.fieldOf("uid").forGetter(Team::getUid),
-            Codec.INT.fieldOf("color").forGetter(Team::getColor)
+            Codec.INT.fieldOf("color").forGetter(Team::getRGB)
     ).apply(instance, Team::new));
     public static final StreamCodec<FriendlyByteBuf, Team> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, Team::getUid,
-            ByteBufCodecs.VAR_INT, Team::getColor,
+            ByteBufCodecs.VAR_INT, Team::getRGB,
             Team::new
     );
     private UUID uid;
-    private int color;
+    private int rgb;
     private int lastHurtByMobTimestamp;
     private LivingEntity lastHurtByMob;
 
-    public Team(UUID uid, int color) {
+    public Team(UUID uid, int rgb) {
         this.uid = uid;
-        this.color = color;
+        this.rgb = rgb;
     }
 
     public Team() {}
@@ -38,8 +38,13 @@ public class Team {
         return uid;
     }
 
+    public int getRGB() {
+        return rgb;
+    }
+
+    @Deprecated
     public int getColor() {
-        return color;
+        return getRGB();
     }
 
     public int getLastHurtByMobTimestamp() {
@@ -58,13 +63,13 @@ public class Team {
     @Override
     public final boolean equals(Object o) {
 
-        return o == this || (o instanceof Team team && color == team.color && Objects.equals(uid, team.uid));
+        return o == this || (o instanceof Team team && rgb == team.rgb && Objects.equals(uid, team.uid));
     }
 
     @Override
     public int hashCode() {
         int result = Objects.hashCode(uid);
-        result = 31 * result + color;
+        result = 31 * result + rgb;
         return result;
     }
 }

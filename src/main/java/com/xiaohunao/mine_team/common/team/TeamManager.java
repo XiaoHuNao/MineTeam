@@ -62,23 +62,20 @@ public class TeamManager extends SavedData {
     private final Map<Team, DyeColor> teamDyeColor = Maps.newHashMap(); // bi hash map 无法正常工作
 
     public static TeamManager of(Level level) {
-        if (level instanceof ServerLevel serverLevel) {
-            TeamManager manager = (serverLevel.dimension() == Level.OVERWORLD ? serverLevel : serverLevel.getServer().overworld())
-                    .getDataStorage().computeIfAbsent(new Factory<>(TeamManager::new, (tag, provider) -> {
-                        TeamManager manager1 = new TeamManager();
-                        manager1.deserializeNBT(tag);
-                        return manager1;
-                    }), NAME);
-            if (manager.isTeamEmpty()) {
-                for (DyeColor color : DyeColor.values()) {
-                    manager.createTeam(UUID.randomUUID(), color);
-                }
-                manager.setDirty();
+        if (level.isClientSide) return clientMonger;
+        TeamManager manager = ((ServerLevel) (level.dimension() == Level.OVERWORLD ? level : level.getServer().overworld()))
+                .getDataStorage().computeIfAbsent(new Factory<>(TeamManager::new, (tag, provider) -> {
+                    TeamManager manager1 = new TeamManager();
+                    manager1.deserializeNBT(tag);
+                    return manager1;
+                }), NAME);
+        if (manager.isTeamEmpty()) {
+            for (DyeColor color : DyeColor.values()) {
+                manager.createTeam(UUID.randomUUID(), color);
             }
-            return manager;
-        } else {
-            return clientMonger;
+            manager.setDirty();
         }
+        return manager;
     }
 
     @Override
@@ -98,7 +95,7 @@ public class TeamManager extends SavedData {
             Team team = Team.CODEC.parse(NbtOps.INSTANCE, taems.get(uid)).result().orElseGet(Team::new);
             this.taems.put(uuid, team);
 
-            DyeColor dyeColor = DyeColor.byFireworkColor(team.getColor());
+            DyeColor dyeColor = DyeColor.byFireworkColor(team.getRGB());
             if (dyeColor != null) {
                 this.dyeColorTeam.put(dyeColor, team);
                 this.teamDyeColor.put(team, dyeColor);
@@ -147,8 +144,8 @@ public class TeamManager extends SavedData {
     }
 
     public static Team getTeam(Entity entity) {
-        TeamManager manager = TeamManager.of(entity.level());
         if (entity.hasData(MTAttachmentTypes.TEAM)) {
+            TeamManager manager = TeamManager.of(entity.level());
             return manager.taems.get(TeamAttachment.of(entity).getTeamUid());
         }
         return null;
