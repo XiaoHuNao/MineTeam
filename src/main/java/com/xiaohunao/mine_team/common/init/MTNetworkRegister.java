@@ -9,7 +9,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.DirectionalPayloadHandler;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
-@EventBusSubscriber(modid = MineTeam.MODID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = MineTeam.MODID)
 public class MTNetworkRegister {
     public static final String VERSION = "0.0.1";
 
